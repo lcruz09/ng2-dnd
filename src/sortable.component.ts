@@ -39,6 +39,8 @@ export class SortableContainer extends AbstractComponent {
         this.dropZones = value;
     }
 
+    @Input() keepOnDrop = false;
+
     constructor(elemRef: ElementRef, dragDropService: DragDropService, config:DragDropConfig, cdr:ChangeDetectorRef,
         private _sortableDataService: DragDropSortableService) {
 
@@ -52,11 +54,19 @@ export class SortableContainer extends AbstractComponent {
             // Check does element exist in sortableData of this Container
             if (this.indexOf(item) === -1) {
                 // Let's add it
-                // console.log('Container._onDragEnterCallback. drag node [' + this._sortableDataService.index.toString() + '] over parent node');
-                // Remove item from previouse list
-                this._sortableDataService.sortableContainer.removeItemAt(this._sortableDataService.index);
-                if (this._sortableDataService.sortableContainer._sortableData.length === 0) {
-                    this._sortableDataService.sortableContainer.dropEnabled = true;
+                // Remove item from previouse list only if keepOnDrop param and its same container
+                if (!this.keepOnDrop) {
+                    this._sortableDataService.sortableContainer.removeItemAt(this._sortableDataService.index);
+                    if (this._sortableDataService.sortableContainer._sortableData.length === 0) {
+                        this._sortableDataService.sortableContainer.dropEnabled = true;
+                    }
+                } else {
+                    if (this._sortableDataService.sortableContainer === this) {
+                        this._sortableDataService.sortableContainer.removeItemAt(this._sortableDataService.index);
+                        if (this._sortableDataService.sortableContainer._sortableData.length === 0) {
+                            this._sortableDataService.sortableContainer.dropEnabled = true;
+                        }
+                    }
                 }
                 // Add item to new list
                 this.insertItemAt(item, 0);
@@ -158,7 +168,6 @@ export class SortableComponent extends AbstractComponent {
      * It is activated after the on-drop-success callback
      */
     @Output("onDragSuccess") onDragSuccessCallback: EventEmitter<any> = new EventEmitter<any>();
-
     @Output("onDragStart") onDragStartCallback: EventEmitter<any> = new EventEmitter<any>();
     @Output("onDragOver") onDragOverCallback: EventEmitter<any> = new EventEmitter<any>();
     @Output("onDragEnd") onDragEndCallback: EventEmitter<any> = new EventEmitter<any>();
@@ -199,6 +208,7 @@ export class SortableComponent extends AbstractComponent {
     }
 
     _onDragEndCallback(event: Event) {
+
         // console.log('_onDragEndCallback. end dragging elem with index ' + this.index);
         this._sortableDataService.isDragged = false;
         this._sortableDataService.sortableContainer = null;
@@ -208,7 +218,8 @@ export class SortableComponent extends AbstractComponent {
         this._dragDropService.isDragged = false;
         this._dragDropService.dragData = null;
         this._dragDropService.onDragSuccessCallback = null;
-        //
+
+        // Emit Drop end event
         this.onDragEndCallback.emit(this._dragDropService.dragData);
     }
 
@@ -217,19 +228,31 @@ export class SortableComponent extends AbstractComponent {
             this._sortableDataService.markSortable(this._elem);
             if ((this.index !== this._sortableDataService.index) ||
                 (this._sortableDataService.sortableContainer.sortableData !== this._sortableContainer.sortableData)) {
-                // console.log('Component._onDragEnterCallback. drag node [' + this.index + '] over node [' + this._sortableDataService.index + ']');
                 // Get item
-                let item:any = this._sortableDataService.sortableContainer.getItemAt(this._sortableDataService.index);
+                const item: any = this._sortableDataService.sortableContainer.getItemAt(this._sortableDataService.index);
+
                 // Remove item from previouse list
-                this._sortableDataService.sortableContainer.removeItemAt(this._sortableDataService.index);
-                if (this._sortableDataService.sortableContainer.sortableData.length === 0) {
-                    this._sortableDataService.sortableContainer.dropEnabled = true;
+                // Remove only if same container
+                if (!this._sortableDataService.sortableContainer.keepOnDrop) {
+                    this._sortableDataService.sortableContainer.removeItemAt(this._sortableDataService.index);
+                    if (this._sortableDataService.sortableContainer.sortableData.length === 0) {
+                        this._sortableDataService.sortableContainer.dropEnabled = true;
+                    }
+                } else  {
+                    if (this._sortableDataService.sortableContainer === this._sortableContainer) {
+                        this._sortableDataService.sortableContainer.removeItemAt(this._sortableDataService.index);
+                        if (this._sortableDataService.sortableContainer.sortableData.length === 0) {
+                            this._sortableDataService.sortableContainer.dropEnabled = true;
+                        }
+                    }
                 }
+
                 // Add item to new list
                 this._sortableContainer.insertItemAt(item, this.index);
                 if (this._sortableContainer.dropEnabled) {
                     this._sortableContainer.dropEnabled = false;
                 }
+
                 this._sortableDataService.sortableContainer = this._sortableContainer;
                 this._sortableDataService.index = this.index;
                 this.detectChanges();
@@ -239,10 +262,8 @@ export class SortableComponent extends AbstractComponent {
 
     _onDropCallback (event: Event) {
         if (this._sortableDataService.isDragged) {
-            // console.log('onDropCallback.onDropSuccessCallback.dragData', this._dragDropService.dragData);
             this.onDropSuccessCallback.emit(this._dragDropService.dragData);
             if (this._dragDropService.onDragSuccessCallback) {
-                // console.log('onDropCallback.onDragSuccessCallback.dragData', this._dragDropService.dragData);
                 this._dragDropService.onDragSuccessCallback.emit(this._dragDropService.dragData);
             }
             // Refresh changes in properties of container component
