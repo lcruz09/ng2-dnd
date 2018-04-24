@@ -17,6 +17,13 @@ export function dragDropServiceFactory(): DragDropService  {
     return new DragDropService();
 }
 
+export class DragDropRevertData {
+    initialContainerRef: any;
+    finalContainerRef: any;
+    initialContainerItemsCopy: any;
+    finalContainerItemsCopy: any;
+}
+
 @Injectable()
 export class DragDropService {
     allowedDropZones: Array<string> = [];
@@ -35,12 +42,16 @@ export class DragDropSortableService {
     sortableContainer: SortableContainer;
     isDragged: boolean;
 
+    revertData: DragDropRevertData;
+
     private _elem: HTMLElement;
     public get elem(): HTMLElement {
         return this._elem;
     }
 
-    constructor(private _config:DragDropConfig) {}
+    constructor(private _config: DragDropConfig) {
+        this.revertData = new DragDropRevertData();
+    }
 
     markSortable(elem: HTMLElement) {
         if (isPresent(this._elem)) {
